@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chrono Quest: 1-Minute RPG</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #030308;
+      color: #00f0ff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+    .game-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 450px;
+      padding: 10px;
+    }
+    .hud {
+      width: 100%;
+      background: rgba(10, 15, 30, 0.9);
+      border: 1px solid #00f0ff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .hud-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .timer {
+      color: #ff0055;
+      font-size: 1.2rem;
+      text-shadow: 0 0 8px #ff0055;
+    }
+    .stat-bar {
+      width: 100%;
+      height: 8px;
+      background: #101025;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .stat-fill {
+      height: 100%;
+      background: #00f0ff;
+      width: 100%;
+      transition: width 0.2s ease;
+    }
+    canvas {
+      background: #050510;
+      border: 2px solid #00f0ff;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+      width: 100%;
+      max-width: 450px;
+      aspect-ratio: 1 / 1;
+      display: block;
+      touch-action: none;
+    }
+    .log-box {
+      width: 100%;
+      height: 50px;
+      background: rgba(10, 15, 30, 0.9);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 6px;
+      margin-top: 8px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      color: #aaa;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    .log-entry {
+      margin-bottom: 2px;
+    }
+    .log-highlight {
+      color: #00f0ff;
+    }
+    .log-alert {
+      color: #ff0055;
+    }
+    .overlay {
+      position: absolute;
+      top: 65px;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      background: rgba(3, 3, 8, 0.92);
+      border: 1px solid #ff0055;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      backdrop-filter: blur(6px);
+      padding: 20px;
+    }
+    .overlay h1 {
+      font-size: 2rem;
+      color: #00f0ff;
+      text-shadow: 0 0 10px #00f0ff, 0 0 20px #ff0055;
+      margin-bottom: 10px;
+    }
+    .overlay p {
+      color: #ccc;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .btn {
+      background: transparent;
+      color: #ff0055;
+      border: 2px solid #ff0055;
+      padding: 10px 24px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      border-radius: 30px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background: #ff0055;
+      color: #fff;
+      box-shadow: 0 0 20px rgba(255, 0, 85, 0.8);
+      transform: scale(1.05);
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+    <div class="hud">
+      <div class="hud-row">
+        <div>HP: <span id="hpText">20/20</span></div>
+        <div>TIME: <span id="timerText" class="timer">60</span>s</div>
+        <div>LVL: <span id="lvlText">1</span></div>
+      </div>
+      <div class="stat-bar">
+        <div id="hpFill" class="stat-fill"></div>
+      </div>
+      <div class="hud-row" style="font-size: 0.8rem; color: #aaa;">
+        <div>Gold: <span id="goldText" style="color:#ffe600;">0</span></div>
+        <div>Floor: <span id="floorText" style="color:#00f0ff;">1</span></div>
+        <div>ATK: <span id="atkText" style="color:#ff0055;">5</span></div>
+      </div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="log-box" id="logBox">
+      <div class="log-entry">Welcome to the Chrono Dungeon!</div>
+    </div>
+
+    <div id="startScreen" class="overlay">
+      <h1>CHRONO QUEST</h1>
+      <p>Clear dungeons, defeat monsters, collect gold, and descend as far as possible before the 60-second timer runs out!</p>
+      <button class="btn" onclick="startGame()">Descend</button>
+    </div>
+
+    <div id="gameOverScreen" class="overlay hidden">
+      <h1 id="overTitle">TIME EXPIRED</h1>
+      <p id="overText">Score summary loading...</p>
+      <button class="btn" onclick="startGame()">Try Again</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const hpText = document.getElementById('hpText');
+    const timerText = document.getElementById('timerText');
+    const lvlText = document.getElementById('lvlText');
+    const goldText = document.getElementById('goldText');
+    const floorText = document.getElementById('floorText');
+    const atkText = document.getElementById('atkText');
+    const hpFill = document.getElementById('hpFill');
+    const logBox = document.getElementById('logBox');
+
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const overTitle = document.getElementById('overTitle');
+    const overText = document.getElementById('overText');
+
+    const gridSize = 10;
+    const tileSize = canvas.width / gridSize;
+
+    let timeLeft = 60;
+    let timerInterval = null;
+    let gameRunning = false;
+
+    // Player State
+    let player = {
+      x: 0,
+      y: 0,
+      hp: 20,
+      maxHp: 20,
+      atk: 5,
+      lvl: 1,
+      xp: 0,
+      maxXp: 10,
+      gold: 0,
+      floor: 1
+    };
+
+    // Grid Matrix (0: Empty, 1: Wall, 2: Monster, 3: Potion, 4: Chest, 5: Stairs)
+    let grid = [];
+
+    function addLog(msg, type = '') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerText = msg;
+      logBox.insertBefore(entry, logBox.firstChild);
+    }
+
+    function generateFloor() {
+      grid = Array(gridSize).fill(null).map(() => Array(gridSize).fill(0));
+      player.x = 0;
+      player.y = 0;
+
+      // Outer walls & random obstacles
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if ((r === 0 && c === 0) || (r === gridSize - 1 && c === gridSize - 1)) continue;
+          if (Math.random() < 0.18) grid[r][c] = 1; // Wall
+          else if (Math.random() < 0.12) grid[r][c] = 2; // Monster
+          else if (Math.random() < 0.04) grid[r][c] = 3; // Potion
+          else if (Math.random() < 0.04) grid[r][c] = 4; // Chest
+        }
+      }
+
+      // Stairs at bottom right
+      grid[gridSize - 1][gridSize - 1] = 5;
+    }
+
+    function updateHUD() {
+      hpText.innerText = `${player.hp}/${player.maxHp}`;
+      lvlText.innerText = player.lvl;
+      goldText.innerText = player.gold;
+      floorText.innerText = player.floor;
+      atkText.innerText = player.atk;
+      
+      const pct = Math.max(0, (player.hp / player.maxHp) * 100);
+      hpFill.style.width = `${pct}%`;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          const type = grid[r][c];
+          const x = c * tileSize;
+          const y = r * tileSize;
+
+          // Grid Line
+          ctx.strokeStyle = '#0a0a20';
+          ctx.strokeRect(x, y, tileSize, tileSize);
+
+          if (type === 1) { // Wall
+            ctx.fillStyle = '#1a1a3a';
+            ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+          } else if (type === 2) { // Monster
+            ctx.fillStyle = '#ff0055';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ff0055';
+            ctx.fillRect(x + 8, y + 8, tileSize - 16, tileSize - 16);
+            ctx.shadowBlur = 0;
+          } else if (type === 3) { // Potion
+            ctx.fillStyle = '#00ff66';
+            ctx.beginPath();
+            ctx.arc(x + tileSize / 2, y + tileSize / 2, 6, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (type === 4) { // Chest
+            ctx.fillStyle = '#ffe600';
+            ctx.fillRect(x + 10, y + 10, tileSize - 20, tileSize - 20);
+          } else if (type === 5) { // Stairs
+            ctx.fillStyle = '#00f0ff';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00f0ff';
+            ctx.fillRect(x + 6, y + 6, tileSize - 12, tileSize - 12);
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+
+      // Draw Player
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00f0ff';
+      ctx.beginPath();
+      ctx.arc(player.x * tileSize + tileSize / 2, player.y * tileSize + tileSize / 2, tileSize / 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function movePlayer(dx, dy) {
+      if (!gameRunning) return;
+
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+
+      if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) return;
+
+      const targetTile = grid[newY][newX];
+
+      if (targetTile === 1) return; // Blocked by wall
+
+      if (targetTile === 2) { // Combat
+        const monsterHp = 6 + player.floor * 2;
+        const monsterAtk = 2 + player.floor;
+        
+        player.hp -= monsterAtk;
+        addLog(`Fought Goblin! Took ${monsterAtk} DMG.`, 'log-alert');
+
+        if (player.hp <= 0) {
+          player.hp = 0;
+          endGame(false);
+          return;
+        }
+
+        player.xp += 5;
+        player.gold += 10;
+        grid[newY][newX] = 0; // Defeated monster
+        
+        // Level Up Check
+        if (player.xp >= player.maxXp) {
+          player.lvl++;
+          player.xp = 0;
+          player.maxXp += 10;
+          player.maxHp += 5;
+          player.hp = player.maxHp;
+          player.atk += 2;
+          addLog(`LEVEL UP! You are now Level ${player.lvl}!`, 'log-highlight');
+        }
+      } else if (targetTile === 3) { // Potion
+        player.hp = Math.min(player.maxHp, player.hp + 8);
+        grid[newY][newX] = 0;
+        addLog(`Drank Potion! Restored 8 HP.`, 'log-highlight');
+      } else if (targetTile === 4) { // Chest
+        const foundGold = 15 + Math.floor(Math.random() * 20);
+        player.gold += foundGold;
+        grid[newY][newX] = 0;
+        addLog(`Found Chest! +${foundGold} Gold.`, 'log-highlight');
+      } else if (targetTile === 5) { // Stairs
+        player.floor++;
+        addLog(`Descended to Floor ${player.floor}!`, 'log-highlight');
+        generateFloor();
+        updateHUD();
+        draw();
+        return;
+      }
+
+      player.x = newX;
+      player.y = newY;
+      updateHUD();
+      draw();
+    }
+
+    function startGame() {
+      player = {
+        x: 0, y: 0, hp: 20, maxHp: 20, atk: 5, lvl: 1, xp: 0, maxXp: 10, gold: 0, floor: 1
+      };
+      timeLeft = 60;
+      gameRunning = true;
+
+      startScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      logBox.innerHTML = '';
+      addLog("Dungeon entered! Hurry!");
+
+      generateFloor();
+      updateHUD();
+      draw();
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerText.innerText = timeLeft;
+        if (timeLeft <= 0) {
+          endGame(true);
+        }
+      }, 1000);
+    }
+
+    function endGame(timeUp) {
+      gameRunning = false;
+      clearInterval(timerInterval);
+
+      if (timeUp) {
+        overTitle.innerText = "TIME EXPIRED";
+      } else {
+        overTitle.innerText = "YOU DIED";
+      }
+
+      const score = (player.floor * 100) + player.gold + (player.lvl * 50);
+      overText.innerHTML = `Floor Reached: <b>${player.floor}</b><br>Gold: <b>${player.gold}</b><br>Level: <b>${player.lvl}</b><br><br>Final Score: <b>${score}</b>`;
+      gameOverScreen.classList.remove('hidden');
+    }
+
+    // Key input
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'w') movePlayer(0, -1);
+      if (e.key === 'ArrowDown' || e.key === 's') movePlayer(0, 1);
+      if (e.key === 'ArrowLeft' || e.key === 'a') movePlayer(-1, 0);
+      if (e.key === 'ArrowRight' || e.key === 'd') movePlayer(1, 0);
+    });
+
+    // Mobile Swipe
+    let touchX = 0, touchY = 0;
+    canvas.addEventListener('touchstart', (e) => {
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (!gameRunning) return;
+      let dx = e.changedTouches[0].clientX - touchX;
+      let dy = e.changedTouches[0].clientY - touchY;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 20) movePlayer(1, 0);
+        else if (dx < -20) movePlayer(-1, 0);
+      } else {
+        if (dy > 20) movePlayer(0, 1);
+        else if (dy < -20) movePlayer(0, -1);
+      }
+    }, { passive: true });
+  </script>
+</body>
+</html>
